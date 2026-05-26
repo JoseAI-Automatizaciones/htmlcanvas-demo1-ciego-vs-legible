@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Canvas ciego vs. legible — HTML-in-Canvas</title>
+
+  <!-- =========================================================
+       ORIGIN TRIAL
+       Para que la API funcione SIN flag en tu dominio de Vercel,
+       registra el origin (https://TU-DEMO.vercel.app) en:
+       https://developer.chrome.com/origintrials#/view_trial/3478467762190286849
+       y pega el token aquí abajo:
+  ============================================================ -->
+  <!-- <meta http-equiv="origin-trial" content="PEGA_TU_TOKEN_AQUI" /> -->
+
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --panel: #14181d;
+      --line: #232a31;
+      --txt: #e7ecf1;
+      --muted: #8b97a3;
+      --warm: #e8622c;
+      --cool: #22d3ee;
+      --danger: #ff5d6c;
+      --ok: #45d483;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--txt);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+      padding: 48px 24px 96px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      font-size: 12px;
+      color: var(--cool);
+      margin-bottom: 12px;
+    }
+    h1 { font-size: clamp(28px, 5vw, 44px); margin: 0 0 12px; line-height: 1.1; }
+    h1 .warm { color: var(--warm); }
+    .lede { color: var(--muted); max-width: 640px; margin: 0 0 40px; }
+
+    #support-banner {
+      display: none;
+      background: rgba(255,93,108,.08);
+      border: 1px solid rgba(255,93,108,.35);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 32px;
+      font-size: 14px;
+    }
+    #support-banner.show { display: block; }
+    #support-banner b { color: var(--danger); }
+    #support-banner code {
+      background: #000; padding: 2px 7px; border-radius: 5px;
+      color: var(--cool); font-size: 13px;
+    }
+    #support-ok {
+      display: none;
+      background: rgba(69,212,131,.07);
+      border: 1px solid rgba(69,212,131,.3);
+      border-radius: 12px; padding: 12px 18px; margin-bottom: 32px;
+      font-size: 14px; color: var(--ok);
+    }
+    #support-ok.show { display: block; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+
+    .col h2 { font-size: 18px; margin: 0 0 4px; }
+    .col .tag {
+      display: inline-block; font-size: 11px; letter-spacing: .1em;
+      text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
+      margin-bottom: 14px;
+    }
+    .tag.bad { background: rgba(255,93,108,.12); color: var(--danger); }
+    .tag.good { background: rgba(69,212,131,.12); color: var(--ok); }
+
+    .stage {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 14px; padding: 18px; position: relative;
+    }
+    canvas { width: 100%; height: 320px; display: block; border-radius: 8px; }
+
+    /* La tarjeta HTML que se dibuja dentro del canvas del lado B */
+    #product-card {
+      position: absolute; top: 0; left: 0;
+      width: 300px; padding: 22px;
+      background: linear-gradient(160deg, #1b2330, #0f1620);
+      border: 1px solid #2b3a4d; border-radius: 14px;
+      font-family: inherit; color: var(--txt);
+      transform-origin: top left;
+    }
+    #product-card h3 { margin: 0 0 4px; font-size: 20px; }
+    #product-card .price { color: var(--cool); font-size: 26px; font-weight: 700; margin: 8px 0; }
+    #product-card .stock { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+    #product-card button {
+      width: 100%; padding: 11px; border: 0; border-radius: 8px;
+      background: var(--warm); color: #fff; font-weight: 600; cursor: pointer;
+    }
+
+    .reads {
+      margin-top: 14px; background: #000; border: 1px solid var(--line);
+      border-radius: 10px; padding: 14px 16px; font-size: 13px;
+    }
+    .reads .lbl { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px; }
+    .reads pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, "Cascadia Code", monospace; color: #cfe; }
+    .reads.empty pre { color: var(--danger); }
+    .footnote { color: var(--muted); font-size: 13px; margin-top: 40px; text-align: center; }
+    .footnote a { color: var(--cool); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">HTML-in-Canvas · Demo 1</div>
+    <h1>Lo mismo en pantalla.<br /><span class="warm">Lo opuesto para una IA.</span></h1>
+    <p class="lede">
+      Las dos columnas se ven idénticas. Pero un agente de IA o un buscador
+      solo entiende una de ellas. Eso es exactamente lo que cambia
+      <b>HTML-in-Canvas</b>.
+    </p>
+
+    <div id="support-banner">
+      <b>Tu navegador no soporta HTML-in-Canvas todavía.</b><br />
+      Para ver el demo real: usa <b>Chrome Canary 149+</b> o <b>Brave</b> y activa
+      <code>chrome://flags/#canvas-draw-element</code>, o despliega esta página con
+      un token de Origin Trial. Mientras tanto se muestra una versión degradada.
+    </div>
+    <div id="support-ok">✓ HTML-in-Canvas activo en este navegador. El lado derecho se está dibujando dentro del canvas.</div>
+
+    <div class="grid">
+      <!-- LADO A: canvas tradicional -->
+      <div class="col">
+        <h2>Canvas tradicional</h2>
+        <span class="tag bad">La IA es ciega</span>
+        <div class="stage">
+          <canvas id="canvas-a" width="600" height="320"></canvas>
+        </div>
+        <div class="reads empty">
+          <div class="lbl">Lo que un agente / buscador lee del HTML:</div>
+          <pre>&lt;canvas id="canvas-a"&gt;&lt;/canvas&gt;
+&lt;!-- nada más. cero texto. cero precio. --&gt;</pre>
+        </div>
+      </div>
+
+      <!-- LADO B: HTML-in-Canvas -->
+      <div class="col">
+        <h2>HTML-in-Canvas</h2>
+        <span class="tag good">La IA lee todo</span>
+        <div class="stage">
+          <canvas id="canvas-b" width="600" height="320" layoutsubtree>
+            <!-- HTML REAL: legible, accesible, indexable -->
+            <div id="product-card">
+              <h3>Laptop Pro X</h3>
+              <p class="price">$99.99</p>
+              <p class="stock">Stock: 15 unidades disponibles</p>
+              <button>Agregar al carrito</button>
+            </div>
+          </canvas>
+        </div>
+        <div class="reads">
+          <div class="lbl">Lo que un agente / buscador lee del HTML:</div>
+          <pre id="readout-b"></pre>
+        </div>
+      </div>
+    </div>
+
+    <p class="footnote">
+      Demo de la API <a href="https://developer.chrome.com/blog/html-in-canvas-origin-trial" target="_blank">HTML-in-Canvas</a>
+      (Origin Trial, Chrome 148+). Construido por Jose · JoseAI-Automatizaciones.
+    </p>
+  </div>
+
+  <script>
+    // ---- Lado A: canvas tradicional. Solo píxeles. Invisible para la IA. ----
+    const a = document.getElementById('canvas-a');
+    const actx = a.getContext('2d');
+    function paintA() {
+      actx.fillStyle = '#0f1620';
+      actx.fillRect(0, 0, 600, 320);
+      actx.fillStyle = '#e7ecf1';
+      actx.font = 'bold 30px sans-serif';
+      actx.fillText('Laptop Pro X', 40, 70);
+      actx.fillStyle = '#22d3ee';
+      actx.font = 'bold 38px sans-serif';
+      actx.fillText('$99.99', 40, 130);
+      actx.fillStyle = '#8b97a3';
+      actx.font = '18px sans-serif';
+      actx.fillText('Stock: 15 unidades disponibles', 40, 170);
+      actx.fillStyle = '#e8622c';
+      actx.fillRect(40, 200, 240, 50);
+      actx.fillStyle = '#fff';
+      actx.font = 'bold 18px sans-serif';
+      actx.fillText('Agregar al carrito', 70, 232);
+    }
+    paintA();
+
+    // ---- Lado B: HTML-in-Canvas. HTML real renderizado en el canvas. ----
+    const b = document.getElementById('canvas-b');
+    const bctx = b.getContext('2d');
+    const card = document.getElementById('product-card');
+
+    // Espejamos en el readout el texto REAL que la IA puede leer del DOM.
+    document.getElementById('readout-b').textContent =
+      card.innerText.trim() + '\n\n<!-- texto real en el DOM, legible e indexable -->';
+
+    const supported =
+      typeof bctx.drawElementImage === 'function';
+
+    if (supported) {
+      document.getElementById('support-ok').classList.add('show');
+      const paintB = () => {
+        bctx.clearRect(0, 0, 600, 320);
+        bctx.fillStyle = '#0f1620';
+        bctx.fillRect(0, 0, 600, 320);
+        // Dibuja el elemento HTML dentro del canvas y devuelve el transform
+        // que mantiene el DOM alineado para clic/hover/selección nativos.
+        const t = bctx.drawElementImage(card, 30, 30);
+        card.style.transform = t.toString();
+      };
+      // onpaint vuelve a disparar cuando el HTML cambia (hover, foco, etc.)
+      b.onpaint = paintB;
+      paintB();
+    } else {
+      // Degradación: sin API, mostramos la tarjeta HTML directamente sobre el canvas
+      document.getElementById('support-banner').classList.add('show');
+      card.style.position = 'static';
+      card.style.margin = '10px auto';
+      b.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
